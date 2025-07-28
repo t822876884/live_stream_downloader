@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>已完成的任务 - 直播流下载器</title>
+    <!-- 在 style 标签内添加按钮样式 -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        .nav {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .nav a {
+            margin: 0 10px;
+            text-decoration: none;
+            color: #333;
+        }
+        .nav a:hover {
+            text-decoration: underline;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .play {
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .play:hover {
+            background-color: #45a049;
+        }
+        .error {
+            color: #f44336;
+        }
+        .no-tasks {
+            text-align: center;
+            margin-top: 50px;
+            color: #666;
+        }
+        .button {
+            padding: 5px 10px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .button:hover {
+            background-color: #d32f2f;
+        }
+        /* 添加视频播放器样式 */
+        .video-player-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+        }
+        .video-player-container {
+            position: relative;
+            width: 80%;
+            max-width: 800px;
+            margin: 50px auto;
+        }
+        .video-player {
+            width: 100%;
+            background-color: #000;
+        }
+        .close-player {
+            position: absolute;
+            top: -30px;
+            right: 0;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+    </style>
+    <!-- 引入flv.js库 -->
+    <script src="/static/js/flv.min.js"></script>
+    <script src="/static/js/player.js"></script>
+</head>
+<body>
+    <h1>已完成的任务</h1>
+    
+    <div class="nav">
+        <a href="/">首页</a>
+        <a href="/active">下载中的任务</a>
+        <a href="/completed">已完成的任务</a>
+    </div>
+    
+    {{if .Tasks}}
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>文件名</th>
+                    <th>大小</th>
+                    <th>状态</th>
+                    <th>开始时间</th>
+                    <th>结束时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Tasks}}
+                <tr>
+                    <td>{{.ID}}</td>
+                    <td>{{.FileName}}</td>
+                    <td>{{formatSize .FileSize}}</td>
+                    <td>
+                        {{if eq .Status "completed"}}
+                            已完成
+                        {{else if eq .Status "error"}}
+                            <span class="error">
+                                {{if contains .ErrorMessage "no such host"}}
+                                    DNS解析失败: 无法解析域名，请检查URL是否正确或网络连接
+                                {{else}}
+                                    出错: {{.ErrorMessage}}
+                                {{end}}
+                            </span>
+                        {{else}}
+                            {{.Status}}
+                        {{end}}
+                    </td>
+                    <td>{{.StartTime.Format "2006-01-02 15:04:05"}}</td>
+                    <td>{{if .EndTime}}{{.EndTime.Format "2006-01-02 15:04:05"}}{{end}}</td>
+                    <td>
+                        {{if eq .Status "completed"}}
+                            <button class="play" onclick="openPlayer('/data/{{.FileName}}', '{{.FileName}}')">播放</button>
+                            <a href="/data/{{.FileName}}" class="play" style="background-color: #2196F3;" download>下载</a>
+                        {{end}}
+                        <button class="button" style="background-color: #9e9e9e; margin-left: 5px;" onclick="deleteCompletedTask('{{.ID}}')">删除</button>
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    {{else}}
+        <div class="no-tasks">
+            <p>当前没有已完成的任务</p>
+            <p><a href="/">创建新任务</a></p>
+        </div>
+    {{end}}
+    
+    <!-- 视频播放器模态框 -->
+    <div id="videoPlayerModal" class="video-player-modal">
+        <div class="video-player-container">
+            <span class="close-player" onclick="closePlayer()">&times;</span>
+            <h3 id="videoTitle" style="color: white; margin-bottom: 10px;"></h3>
+            <video id="videoPlayer" class="video-player" controls></video>
+        </div>
+    </div>
+    
+    <!-- 在 script 标签内添加删除任务的函数 -->
+    <script>
+        // 格式化文件大小
+        function formatSize(bytes) {
+            if (bytes < 1024) {
+                return bytes + ' 字节';
+            } else if (bytes < 1024 * 1024) {
+                return (bytes / 1024).toFixed(2) + ' KB';
+            } else if (bytes < 1024 * 1024 * 1024) {
+                return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+            } else {
+                return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+            }
+        }
+        
+        // 定期刷新任务列表
+        function refreshTasks() {
+            fetch('/api/tasks/completed')
+                .then(response => response.json())
+                .then(tasks => {
+                    if (tasks.length !== {{len .Tasks}}) {
+                        // 任务数量变化，刷新页面
+                        location.reload();
+                    }
+                })
+                .catch(error => console.error('刷新任务失败:', error));
+        }
+        
+        // 每5秒刷新一次任务列表
+        setInterval(refreshTasks, 5000);
+        
+        // 在 script 标签内添加删除任务的函数 -->
+        function deleteCompletedTask(taskId) {
+            if (confirm('确定要删除此任务吗？这将删除已下载的文件。')) {
+                fetch(`/api/tasks/delete/completed/${taskId}`, {
+                    method: 'DELETE',
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // 刷新页面
+                        location.reload();
+                    }
+                })
+                .catch(error => console.error('删除任务失败:', error));
+            }
+        }
+        
+        // 全局变量保存当前播放器实例
+        let currentPlayer = null;
+        
+        // 打开播放器
+        function openPlayer(url, title) {
+            const modal = document.getElementById('videoPlayerModal');
+            const videoElement = document.getElementById('videoPlayer');
+            const titleElement = document.getElementById('videoTitle');
+            
+            // 设置标题
+            titleElement.textContent = title;
+            
+            // 显示模态框
+            modal.style.display = 'block';
+            
+            // 销毁之前的播放器实例（如果有）
+            if (currentPlayer) {
+                destroyFlvPlayer(currentPlayer);
+                currentPlayer = null;
+            }
+            
+            // 初始化新的播放器
+            currentPlayer = initFlvPlayer(videoElement, url);
+        }
+        
+        // 关闭播放器
+        function closePlayer() {
+            const modal = document.getElementById('videoPlayerModal');
+            
+            // 销毁播放器实例
+            if (currentPlayer) {
+                destroyFlvPlayer(currentPlayer);
+                currentPlayer = null;
+            }
+            
+            // 隐藏模态框
+            modal.style.display = 'none';
+        }
+        
+        // 点击模态框背景关闭播放器
+        document.getElementById('videoPlayerModal').addEventListener('click', function(event) {
+            if (event.target === this) {
+                closePlayer();
+            }
+        });
+    </script>
+</body>
+</html>

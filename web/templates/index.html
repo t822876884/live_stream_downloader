@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>直播流下载器</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .nav {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .nav a {
+            margin: 0 10px;
+            text-decoration: none;
+            color: #333;
+        }
+        .nav a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h1>直播流下载器</h1>
+    
+    <div class="nav">
+        <a href="/">首页</a>
+        <a href="/active">下载中的任务</a>
+        <a href="/completed">已完成的任务</a>
+    </div>
+    
+    <h2>创建下载任务</h2>
+    <form id="downloadForm">
+        <div class="form-group">
+            <label for="url">直播流URL:</label>
+            <input type="text" id="url" name="url" placeholder="例如: http://lafaledalfj.csfm.xyz/live/cx_371449.flv" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="file_name">文件名:</label>
+            <input type="text" id="file_name" name="file_name" placeholder="例如: my_stream.flv">
+        </div>
+        
+        <button type="submit">开始下载</button>
+    </form>
+    
+    <div id="result" style="margin-top: 20px;"></div>
+    
+    <script>
+        document.getElementById('downloadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const url = document.getElementById('url').value;
+            const fileName = document.getElementById('file_name').value;
+            
+            fetch('/api/tasks', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `url=${encodeURIComponent(url)}&file_name=${encodeURIComponent(fileName)}`,
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('result').innerHTML = `
+                    <div style="padding: 10px; background-color: #dff0d8; border: 1px solid #d6e9c6;">
+                        <p>任务创建成功!</p>
+                        <p>任务ID: ${data.id}</p>
+                        <p>文件名: ${data.file_name}</p>
+                        <p><a href="/active">查看下载中的任务</a></p>
+                    </div>
+                `;
+            })
+            .catch(error => {
+                document.getElementById('result').innerHTML = `
+                    <div style="padding: 10px; background-color: #f2dede; border: 1px solid #ebccd1;">
+                        <p>创建任务失败: ${error.message}</p>
+                    </div>
+                `;
+            });
+        });
+    </script>
+</body>
+</html>
