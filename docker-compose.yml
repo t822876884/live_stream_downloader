@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+  live-stream-downloader:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - /Users/bertram/Documents/tmp/live_down:/app/data
+    restart: unless-stopped

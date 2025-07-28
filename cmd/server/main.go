@@ -16,6 +16,14 @@ func main() {
 	// 解析命令行参数
 	cfg := config.NewDefaultConfig()
 
+	// 在flag.Parse()之前添加以下代码
+	if envAddr := os.Getenv("SERVER_ADDR"); envAddr != "" {
+		cfg.ServerAddr = envAddr
+	}
+
+	if envDataDir := os.Getenv("DATA_DIR"); envDataDir != "" {
+		cfg.DataDir = envDataDir
+	}
 	flag.StringVar(&cfg.ServerAddr, "addr", cfg.ServerAddr, "服务器地址")
 	flag.StringVar(&cfg.DataDir, "data", cfg.DataDir, "数据目录")
 	flag.Parse()
