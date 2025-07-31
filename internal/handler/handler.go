@@ -39,7 +39,10 @@ func New(downloader *downloader.Downloader, templatesDir, dataDir string) (*Hand
 	}
 
 	// 将函数映射应用到模板
-	templates := template.Must(template.New("").Funcs(funcMap).ParseGlob(filepath.Join("web", "templates", "*.html")))
+	//templates := template.Must(template.New("").Funcs(funcMap).ParseGlob(filepath.Join("web", "templates", "*.html")))
+	// 使用绝对路径而不是相对路径
+	templatesPath := filepath.Join("/app", "web", "templates", "*.html")
+	templates := template.Must(template.New("").Funcs(funcMap).ParseGlob(templatesPath))
 
 	return &Handler{
 		downloader: downloader,

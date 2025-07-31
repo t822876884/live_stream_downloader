@@ -41,6 +41,7 @@ COPY --from=builder /app/live_stream_downloader .
 
 # 复制web目录
 COPY --from=builder /app/web ./web
+RUN chown -R appuser:appuser /app/web
 
 # 切换到非root用户
 USER appuser
