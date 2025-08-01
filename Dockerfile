@@ -4,6 +4,9 @@ FROM golang:1.24-alpine AS builder
 # 设置工作目录
 WORKDIR /app
 
+# 设置国内模块代理
+ENV GOPROXY=https://goproxy.cn,direct
+
 # 复制go.mod和go.sum文件
 COPY go.mod go.sum ./
 
